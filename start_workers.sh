@@ -83,7 +83,8 @@ serverurl = unix:///tmp/supervisor.sock
 supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
 
 " > $supervisor_file
-WORKERS=`curl -s "$POLIGLO_SERVER_URL/worker_types" | ${exec_paths_py} -c 'import json,sys;workers=json.load(sys.stdin);print " ".join(workers)'`
+WORKERS=`curl -s "$POLIGLO_SERVER_URL/meta_workers" | ${exec_paths_py} -c 'import json,sys;workers=json.load(sys.stdin);print " ".join(workers)'`
+echo $POLIGLO_SERVER_URL/meta_workers
 for worker in $WORKERS; do
     IS_EXCLUDED=`echo "${EXCLUDE_WORKERS}"|grep "^${worker}$"`
     CONFIG_SEPARATOR=","
@@ -99,7 +100,7 @@ for worker in $WORKERS; do
 
     fi
 
-    worker_config=`curl -s "$POLIGLO_SERVER_URL/worker_types/$worker/config" | ${exec_paths_py} -c "import json,sys;config=json.load(sys.stdin);print '${CONFIG_SEPARATOR}'.join([str(key)+'=\"'+str(value)+'\"' for key, value in config.iteritems()])"`
+    worker_config=`curl -s "$POLIGLO_SERVER_URL/meta_workers/$worker/config" | ${exec_paths_py} -c "import json,sys;config=json.load(sys.stdin);print '${CONFIG_SEPARATOR}'.join([str(key)+'=\"'+str(value)+'\"' for key, value in config.iteritems()])"`
     worker_path=`echo -e "${ALL_POSIBLE_WORKERS}" | grep "\/$worker\."|head -n 1`
     extension="${worker_path##*.}"
     exec_variable="exec_paths_$extension"
@@ -113,7 +114,7 @@ for worker in $WORKERS; do
         echo "[program:${worker}]
 command=${exec_path} ${worker_path}
 environment=${worker_config}
-user=${DEPLOY_USER}
+if [[ "$DEPLOY_USER" != "test_user" ]]; then user=${DEPLOY_USER} fi
 " >> $supervisor_file
     fi
 done
